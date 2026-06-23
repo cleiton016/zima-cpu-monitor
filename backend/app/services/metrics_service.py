@@ -119,6 +119,12 @@ class MetricsService:
             connection.commit()
 
     def save_storage_current(self, sample: dict) -> None:
+        mounts_by_device = {}
+        for mount in sample.get("mounts", []):
+            device_name = str(mount.get("device") or "").split("/")[-1]
+            if device_name:
+                mounts_by_device[device_name] = mount
+
         with get_connection(self.database_path) as connection:
             connection.executemany(
                 """
@@ -135,9 +141,9 @@ class MetricsService:
                         device.get("model"),
                         device.get("type"),
                         device.get("sizeBytes"),
-                        None,
-                        None,
-                        None,
+                        self._storage_mount_for_device(device["name"], mounts_by_device).get("usedBytes"),
+                        self._storage_mount_for_device(device["name"], mounts_by_device).get("freeBytes"),
+                        self._storage_mount_for_device(device["name"], mounts_by_device).get("usagePercent"),
                         device.get("temperatureCelsius"),
                         device.get("smartStatus"),
                         device.get("readBytesTotal"),
@@ -530,3 +536,9 @@ class MetricsService:
             "energyKwh": row["energy_kwh"],
             "source": row["source"],
         }
+
+    def _storage_mount_for_device(self, device_name: str, mounts_by_device: dict) -> dict:
+        for mounted_device, mount in mounts_by_device.items():
+            if mounted_device == device_name or mounted_device.startswith(device_name):
+                return mount
+        return {}

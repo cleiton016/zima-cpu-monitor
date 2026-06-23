@@ -63,6 +63,77 @@ export type DailySummary = {
   };
 };
 
+export type RamMetric = {
+  timestamp: string;
+  totalBytes: number;
+  usedBytes: number;
+  availableBytes: number;
+  freeBytes: number | null;
+  usagePercent: number;
+  buffersBytes: number | null;
+  cachedBytes: number | null;
+  sharedBytes: number | null;
+  swapTotalBytes: number | null;
+  swapUsedBytes: number | null;
+  swapUsagePercent: number | null;
+  temperatureCelsius: number | null;
+};
+
+export type StorageMetric = {
+  timestamp: string;
+  name: string;
+  model: string | null;
+  type: string | null;
+  sizeBytes: number | null;
+  usedBytes: number | null;
+  freeBytes: number | null;
+  usagePercent: number | null;
+  temperatureCelsius: number | null;
+  smartStatus: string | null;
+  readBytesTotal: number | null;
+  writeBytesTotal: number | null;
+  readBytesPerSecond: number | null;
+  writeBytesPerSecond: number | null;
+};
+
+export type GpuMetric = {
+  timestamp: string;
+  id: string;
+  vendor: string | null;
+  model: string | null;
+  usagePercent: number | null;
+  temperatureCelsius: number | null;
+  memoryTotalBytes: number | null;
+  memoryUsedBytes: number | null;
+  memoryUsagePercent: number | null;
+  powerWatts: number | null;
+  source: string | null;
+};
+
+export type GpuCurrent = {
+  available: boolean;
+  timestamp: string;
+  devices: Array<{
+    id: string;
+    vendor: string | null;
+    model: string | null;
+    driver: string | null;
+    usagePercent: number | null;
+    temperatureCelsius: number | null;
+    memoryTotalBytes: number | null;
+    memoryUsedBytes: number | null;
+    memoryUsagePercent: number | null;
+    powerWatts: number | null;
+  }>;
+};
+
+export type EnergyMetric = {
+  timestamp: string;
+  powerWatts: number | null;
+  energyKwh: number | null;
+  source: string;
+};
+
 const API_BASE = "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -96,6 +167,26 @@ export function getSummary(query: string) {
 
 export function getDailySummary() {
   return request<DailySummary>("/metrics/daily-summary");
+}
+
+export function getRamHistory(query: string) {
+  return request<RamMetric[]>(`/metrics/ram?${query}`);
+}
+
+export function getStorageHistory(query: string) {
+  return request<StorageMetric[]>(`/metrics/storage?${query}`);
+}
+
+export function getGpuCurrent() {
+  return request<GpuCurrent>("/metrics/gpu/current");
+}
+
+export function getGpuHistory(query: string) {
+  return request<GpuMetric[]>(`/metrics/gpu?${query}`);
+}
+
+export function getEnergyHistory(query: string) {
+  return request<EnergyMetric[]>(`/metrics/energy?${query}`);
 }
 
 export function getSettings() {
