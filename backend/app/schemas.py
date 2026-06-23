@@ -11,3 +11,13 @@ class SettingsResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+
+
+class EnergySettingsPayload(BaseModel):
+    kwhPrice: float = Field(..., gt=0)
+    currency: str = Field("BRL", min_length=3, max_length=3)
+
+
+class EnergySettingsResponse(BaseModel):
+    kwhPrice: float
+    currency: str

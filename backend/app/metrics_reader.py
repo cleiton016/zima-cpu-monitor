@@ -52,6 +52,90 @@ class MetricsReader:
             uptime_seconds=self._read_uptime_seconds(),
         )
 
+    def read_ram_current(self) -> dict:
+        timestamp = utc_now_iso()
+        meminfo = self._parse_meminfo()
+        virtual = psutil.virtual_memory() if psutil else None
+        swap = psutil.swap_memory() if psutil else None
+
+        total = virtual.total if virtual else meminfo.get("MemTotal", 0)
+        available = virtual.available if virtual else meminfo.get("MemAvailable", 0)
+        free = virtual.free if virtual else meminfo.get("MemFree")
+        used = virtual.used if virtual else max(0, total - available)
+        swap_total = swap.total if swap else meminfo.get("SwapTotal")
+        swap_used = swap.used if swap else self._swap_used_from_meminfo(meminfo)
+
+        return {
+            "timestamp": timestamp,
+            "totalBytes": total,
+            "usedBytes": used,
+            "availableBytes": available,
+            "freeBytes": free,
+            "usagePercent": round((used / total) * 100, 2) if total else 0,
+            "buffersBytes": meminfo.get("Buffers"),
+            "cachedBytes": meminfo.get("Cached"),
+            "sharedBytes": meminfo.get("Shmem"),
+            "swapTotalBytes": swap_total,
+            "swapUsedBytes": swap_used,
+            "swapUsagePercent": round((swap_used / swap_total) * 100, 2) if swap_total else 0,
+            "temperatureCelsius": None,
+        }
+
+    def read_ram_processes(self, limit: int = 10) -> dict:
+        timestamp = utc_now_iso()
+        if psutil is None:
+            return {"timestamp": timestamp, "processes": []}
+
+        processes = []
+        for process in psutil.process_iter(["pid", "name", "cmdline", "memory_info", "memory_percent"]):
+            try:
+                info = process.info
+                memory_info = info.get("memory_info")
+                command = " ".join(info.get("cmdline") or [])
+                processes.append(
+                    {
+                        "pid": info.get("pid"),
+                        "name": info.get("name"),
+                        "command": command or info.get("name"),
+                        "memoryBytes": memory_info.rss if memory_info else None,
+                        "memoryPercent": round(info.get("memory_percent") or 0, 2),
+                    }
+                )
+            except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+                continue
+
+        processes.sort(key=lambda item: item["memoryBytes"] or 0, reverse=True)
+        return {"timestamp": timestamp, "processes": processes[:limit]}
+
+    def read_storage_current(self) -> dict:
+        timestamp = utc_now_iso()
+        devices = self._read_storage_devices()
+        mounts = self._read_storage_mounts()
+        return {"timestamp": timestamp, "devices": devices, "mounts": mounts}
+
+    def read_gpu_current(self) -> dict:
+        timestamp = utc_now_iso()
+        devices = []
+        drm_path = self.host_sys_path / "class" / "drm"
+        for card_path in sorted(drm_path.glob("card[0-9]*")):
+            if "-" in card_path.name:
+                continue
+            devices.append(
+                {
+                    "id": card_path.name,
+                    "vendor": self._read_gpu_vendor(card_path),
+                    "model": self._read_text(card_path / "device" / "uevent") or card_path.name,
+                    "driver": self._read_driver_name(card_path),
+                    "usagePercent": None,
+                    "temperatureCelsius": None,
+                    "memoryTotalBytes": None,
+                    "memoryUsedBytes": None,
+                    "memoryUsagePercent": None,
+                    "powerWatts": None,
+                }
+            )
+        return {"available": bool(devices), "timestamp": timestamp, "devices": devices}
+
     def _read_cpu_frequency(self) -> CpuFrequency:
         if psutil is None:
             return CpuFrequency()
@@ -202,6 +286,119 @@ class MetricsReader:
         if uptime is None:
             return None
         return max(0, int(__import__("time").time() - uptime))
+
+    def _read_storage_devices(self) -> list[dict]:
+        disk_io = psutil.disk_io_counters(perdisk=True) if psutil else {}
+        devices: list[dict] = []
+        for device_path in sorted((self.host_sys_path / "block").glob("*")):
+            name = device_path.name
+            if name.startswith(("loop", "ram", "dm-")):
+                continue
+            io = disk_io.get(name) if disk_io else None
+            devices.append(
+                {
+                    "name": name,
+                    "model": self._read_text(device_path / "device" / "model"),
+                    "type": self._read_disk_type(device_path),
+                    "sizeBytes": self._read_block_size(device_path),
+                    "temperatureCelsius": None,
+                    "smartStatus": None,
+                    "readBytesTotal": io.read_bytes if io else None,
+                    "writeBytesTotal": io.write_bytes if io else None,
+                    "readBytesPerSecond": None,
+                    "writeBytesPerSecond": None,
+                }
+            )
+        return devices
+
+    def _read_storage_mounts(self) -> list[dict]:
+        if psutil is None:
+            return []
+        mounts = []
+        for partition in psutil.disk_partitions(all=False):
+            try:
+                usage = psutil.disk_usage(partition.mountpoint)
+            except OSError:
+                continue
+            mounts.append(
+                {
+                    "device": partition.device,
+                    "mountPoint": partition.mountpoint,
+                    "filesystem": partition.fstype,
+                    "totalBytes": usage.total,
+                    "usedBytes": usage.used,
+                    "freeBytes": usage.free,
+                    "usagePercent": usage.percent,
+                }
+            )
+        return mounts
+
+    def _parse_meminfo(self) -> dict[str, int]:
+        meminfo_path = self.host_proc_path / "meminfo"
+        values: dict[str, int] = {}
+        try:
+            lines = meminfo_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            return values
+        for line in lines:
+            if ":" not in line:
+                continue
+            key, raw_value = line.split(":", 1)
+            parts = raw_value.strip().split()
+            if not parts:
+                continue
+            try:
+                values[key] = int(parts[0]) * 1024
+            except ValueError:
+                continue
+        return values
+
+    def _swap_used_from_meminfo(self, meminfo: dict[str, int]) -> int | None:
+        total = meminfo.get("SwapTotal")
+        free = meminfo.get("SwapFree")
+        if total is None or free is None:
+            return None
+        return max(0, total - free)
+
+    def _read_block_size(self, device_path: Path) -> int | None:
+        try:
+            sectors = int((device_path / "size").read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            return None
+        return sectors * 512
+
+    def _read_disk_type(self, device_path: Path) -> str:
+        if device_path.name.startswith("nvme"):
+            return "NVMe"
+        rotational = self._read_text(device_path / "queue" / "rotational")
+        if rotational == "0":
+            return "SSD"
+        if rotational == "1":
+            return "HDD"
+        return "unknown"
+
+    def _read_gpu_vendor(self, card_path: Path) -> str | None:
+        vendor_id = self._read_text(card_path / "device" / "vendor")
+        vendor_map = {
+            "0x8086": "Intel",
+            "0x10de": "NVIDIA",
+            "0x1002": "AMD",
+            "0x1022": "AMD",
+        }
+        return vendor_map.get((vendor_id or "").lower())
+
+    def _read_driver_name(self, card_path: Path) -> str | None:
+        try:
+            return (card_path / "device" / "driver").resolve().name
+        except OSError:
+            return None
+
+    def _read_text(self, path: Path) -> str | None:
+        try:
+            value = path.read_text(encoding="utf-8", errors="ignore").strip()
+        except OSError:
+            return None
+        return value or None
 
     def _safe_call(self, callback, default=None):
         try:

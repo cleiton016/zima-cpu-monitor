@@ -42,3 +42,8 @@ def metric_summary(
         return request.app.state.metrics_service.get_summary(range_name, from_value, to_value)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/daily-summary")
+def daily_summary(request: Request, date: str | None = Query(None)):
+    return request.app.state.metrics_service.get_daily_summary(date)

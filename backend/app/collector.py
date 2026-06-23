@@ -44,7 +44,37 @@ class Collector:
                 logger.debug("Collect interval is %s seconds", interval)
                 metric = self.metrics_reader.read_all()
                 self.metrics_service.save(metric)
+                self._collect_extended_metrics(metric.timestamp, metric.power.watts, interval)
                 self.current_metric = metric.to_api_dict()
             except Exception:
                 logger.exception("Failed to collect metrics")
             await asyncio.sleep(interval)
+
+    def _collect_extended_metrics(self, timestamp: str, power_watts: float | None, interval: int) -> None:
+        collectors = (
+            self._collect_ram,
+            self._collect_storage,
+            self._collect_gpu,
+            lambda: self._collect_energy(timestamp, power_watts, interval),
+        )
+        for collect in collectors:
+            try:
+                collect()
+            except Exception:
+                logger.exception("Extended metric collection failed")
+
+    def _collect_ram(self) -> None:
+        self.metrics_service.save_ram_sample(self.metrics_reader.read_ram_current())
+        self.metrics_service.save_process_memory_samples(self.metrics_reader.read_ram_processes())
+
+    def _collect_storage(self) -> None:
+        self.metrics_service.save_storage_current(self.metrics_reader.read_storage_current())
+
+    def _collect_gpu(self) -> None:
+        self.metrics_service.save_gpu_current(self.metrics_reader.read_gpu_current())
+
+    def _collect_energy(self, timestamp: str, power_watts: float | None, interval: int) -> None:
+        energy_kwh = None
+        if power_watts is not None:
+            energy_kwh = (power_watts * (interval / 3600)) / 1000
+        self.metrics_service.save_energy_sample(timestamp, power_watts, energy_kwh, "intel-rapl")
