@@ -292,7 +292,7 @@ class MetricsReader:
         devices: list[dict] = []
         for device_path in sorted((self.host_sys_path / "block").glob("*")):
             name = device_path.name
-            if name.startswith(("loop", "ram", "dm-")):
+            if not self._is_storage_disk_name(name):
                 continue
             io = disk_io.get(name) if disk_io else None
             devices.append(
@@ -332,6 +332,11 @@ class MetricsReader:
                 }
             )
         return mounts
+
+    def _is_storage_disk_name(self, name: str) -> bool:
+        if name.startswith(("loop", "ram", "dm-", "zram", "sr", "fd")):
+            return False
+        return True
 
     def _parse_meminfo(self) -> dict[str, int]:
         meminfo_path = self.host_proc_path / "meminfo"

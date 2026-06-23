@@ -96,6 +96,31 @@ export type StorageMetric = {
   writeBytesPerSecond: number | null;
 };
 
+export type StorageCurrent = {
+  timestamp: string;
+  devices: Array<{
+    name: string;
+    model: string | null;
+    type: string | null;
+    sizeBytes: number | null;
+    temperatureCelsius: number | null;
+    smartStatus: string | null;
+    readBytesTotal: number | null;
+    writeBytesTotal: number | null;
+    readBytesPerSecond: number | null;
+    writeBytesPerSecond: number | null;
+  }>;
+  mounts: Array<{
+    device: string;
+    mountPoint: string;
+    filesystem: string;
+    totalBytes: number;
+    usedBytes: number;
+    freeBytes: number;
+    usagePercent: number;
+  }>;
+};
+
 export type GpuMetric = {
   timestamp: string;
   id: string;
@@ -244,6 +269,10 @@ export function getRamHistory(query: string) {
 
 export function getStorageHistory(query: string) {
   return request<StorageMetric[]>(`/metrics/storage?${query}`);
+}
+
+export function getStorageCurrent() {
+  return request<StorageCurrent>("/metrics/storage/current");
 }
 
 export function getGpuCurrent() {

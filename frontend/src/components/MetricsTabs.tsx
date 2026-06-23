@@ -13,12 +13,22 @@ import {
   YAxis
 } from "recharts";
 
-import type { EnergyMetric, EnergyMonthly, GpuCurrent, GpuMetric, Metric, RamMetric, StorageMetric } from "../api/client";
+import type {
+  EnergyMetric,
+  EnergyMonthly,
+  GpuCurrent,
+  GpuMetric,
+  Metric,
+  RamMetric,
+  StorageCurrent,
+  StorageMetric
+} from "../api/client";
 import { CpuUsageChart, LoadAverageChart, PowerChart, TemperatureChart } from "./Charts";
 
 type MetricsTabsProps = {
   cpuHistory: Metric[];
   ramHistory: RamMetric[];
+  storageCurrent: StorageCurrent | null;
   storageHistory: StorageMetric[];
   gpuCurrent: GpuCurrent | null;
   gpuHistory: GpuMetric[];
@@ -41,6 +51,20 @@ function EmptyState({ label }: { label: string }) {
       {label}
     </section>
   );
+}
+
+function formatBytes(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "N/D";
+  }
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = value;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
 function ChartFrame({ title, children }: { title: string; children: ReactNode }) {
@@ -91,12 +115,41 @@ function RamCharts({ data }: { data: RamMetric[] }) {
   );
 }
 
-function StorageCharts({ data }: { data: StorageMetric[] }) {
-  if (!data.length) {
-    return <EmptyState label="Sem dados de HDs/SSDs no periodo selecionado." />;
+function StorageCharts({ current, data }: { current: StorageCurrent | null; data: StorageMetric[] }) {
+  const disks = useMemo(() => {
+    const currentDisks = current?.devices ?? [];
+    if (currentDisks.length) {
+      return currentDisks;
+    }
+    const byName = new Map<string, StorageCurrent["devices"][number]>();
+    data.forEach((item) => {
+      if (!byName.has(item.name)) {
+        byName.set(item.name, {
+          name: item.name,
+          model: item.model,
+          type: item.type,
+          sizeBytes: item.sizeBytes,
+          temperatureCelsius: item.temperatureCelsius,
+          smartStatus: item.smartStatus,
+          readBytesTotal: item.readBytesTotal,
+          writeBytesTotal: item.writeBytesTotal,
+          readBytesPerSecond: item.readBytesPerSecond,
+          writeBytesPerSecond: item.writeBytesPerSecond
+        });
+      }
+    });
+    return Array.from(byName.values());
+  }, [current?.devices, data]);
+  const [selectedDisk, setSelectedDisk] = useState("");
+  const activeDisk = disks.some((disk) => disk.name === selectedDisk) ? selectedDisk : disks[0]?.name ?? "";
+  const selectedDiskInfo = disks.find((disk) => disk.name === activeDisk);
+  const selectedHistory = activeDisk ? data.filter((item) => item.name === activeDisk) : [];
+
+  if (!disks.length) {
+    return <EmptyState label="Nenhum disco fisico detectado." />;
   }
 
-  const chartData = data.map((item) => ({
+  const chartData = selectedHistory.map((item) => ({
     time: formatTime(item.timestamp),
     usage: item.usagePercent,
     readMb: item.readBytesTotal === null ? null : item.readBytesTotal / 1024 / 1024,
@@ -104,7 +157,61 @@ function StorageCharts({ data }: { data: StorageMetric[] }) {
   }));
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="flex flex-col gap-4">
+      <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+        <h2 className="text-base font-semibold text-zinc-100">Discos detectados</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {disks.map((disk) => (
+            <button
+              key={disk.name}
+              type="button"
+              onClick={() => setSelectedDisk(disk.name)}
+              className={`min-h-28 rounded-lg border p-4 text-left transition ${
+                activeDisk === disk.name
+                  ? "border-teal-300 bg-teal-300 text-zinc-950"
+                  : "border-zinc-800 bg-zinc-900 text-zinc-100 hover:border-zinc-600"
+              }`}
+            >
+              <p className="text-base font-semibold">{disk.name}</p>
+              <p className={`mt-2 text-sm ${activeDisk === disk.name ? "text-zinc-800" : "text-zinc-400"}`}>
+                {disk.model || "Modelo N/D"}
+              </p>
+              <p className={`mt-1 text-sm ${activeDisk === disk.name ? "text-zinc-800" : "text-zinc-400"}`}>
+                {[disk.type || "Tipo N/D", formatBytes(disk.sizeBytes)].join(" | ")}
+              </p>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {selectedDiskInfo ? (
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+            <p className="text-sm text-zinc-400">Disco</p>
+            <p className="mt-2 text-xl font-semibold text-zinc-50">{selectedDiskInfo.name}</p>
+          </div>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+            <p className="text-sm text-zinc-400">Capacidade</p>
+            <p className="mt-2 text-xl font-semibold text-zinc-50">{formatBytes(selectedDiskInfo.sizeBytes)}</p>
+          </div>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+            <p className="text-sm text-zinc-400">Temperatura</p>
+            <p className="mt-2 text-xl font-semibold text-zinc-50">
+              {selectedDiskInfo.temperatureCelsius === null || selectedDiskInfo.temperatureCelsius === undefined
+                ? "N/D"
+                : `${selectedDiskInfo.temperatureCelsius.toFixed(1)} C`}
+            </p>
+          </div>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+            <p className="text-sm text-zinc-400">SMART</p>
+            <p className="mt-2 text-xl font-semibold text-zinc-50">{selectedDiskInfo.smartStatus || "N/D"}</p>
+          </div>
+        </section>
+      ) : null}
+
+      {!selectedHistory.length ? <EmptyState label="Sem historico para o disco selecionado no periodo." /> : null}
+
+      <div className="grid gap-4 lg:grid-cols-2">
       <ChartFrame title="Uso do disco">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
@@ -129,6 +236,7 @@ function StorageCharts({ data }: { data: StorageMetric[] }) {
           </LineChart>
         </ResponsiveContainer>
       </ChartFrame>
+      </div>
     </div>
   );
 }
@@ -245,6 +353,7 @@ function EnergyMonthlyBarChart({ monthly }: { monthly: EnergyMonthly | null }) {
 export default function MetricsTabs({
   cpuHistory,
   ramHistory,
+  storageCurrent,
   storageHistory,
   gpuCurrent,
   gpuHistory,
@@ -295,7 +404,7 @@ export default function MetricsTabs({
         </div>
       ) : null}
       {visibleTab === "ram" ? <RamCharts data={ramHistory} /> : null}
-      {visibleTab === "storage" ? <StorageCharts data={storageHistory} /> : null}
+      {visibleTab === "storage" ? <StorageCharts current={storageCurrent} data={storageHistory} /> : null}
       {visibleTab === "gpu" ? <GpuCharts current={gpuCurrent} data={gpuHistory} /> : null}
       {visibleTab === "energy" ? <EnergyCharts data={energyHistory} monthly={energyMonthly} /> : null}
     </section>

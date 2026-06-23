@@ -12,6 +12,7 @@ import {
   getRamHistory,
   getSettings,
   getSummary,
+  getStorageCurrent,
   getStorageHistory,
   updateSettings,
   updateEnergySettings,
@@ -23,6 +24,7 @@ import {
   type GpuMetric,
   type Metric,
   type RamMetric,
+  type StorageCurrent,
   type StorageMetric,
   type Summary
 } from "./api/client";
@@ -88,6 +90,7 @@ export default function App() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [ramHistory, setRamHistory] = useState<RamMetric[]>([]);
+  const [storageCurrent, setStorageCurrent] = useState<StorageCurrent | null>(null);
   const [storageHistory, setStorageHistory] = useState<StorageMetric[]>([]);
   const [gpuCurrent, setGpuCurrent] = useState<GpuCurrent | null>(null);
   const [gpuHistory, setGpuHistory] = useState<GpuMetric[]>([]);
@@ -114,6 +117,7 @@ export default function App() {
         summaryData,
         dailySummaryData,
         ramHistoryData,
+        storageCurrentData,
         storageHistoryData,
         gpuCurrentData,
         gpuHistoryData,
@@ -127,6 +131,7 @@ export default function App() {
         getSummary(query),
         getDailySummary(),
         getRamHistory(categoryQuery),
+        getStorageCurrent(),
         getStorageHistory(categoryQuery),
         getGpuCurrent(),
         getGpuHistory(categoryQuery),
@@ -140,6 +145,7 @@ export default function App() {
       setSummary(summaryData);
       setDailySummary(dailySummaryData);
       setRamHistory(ramHistoryData);
+      setStorageCurrent(storageCurrentData);
       setStorageHistory(storageHistoryData);
       setGpuCurrent(gpuCurrentData);
       setGpuHistory(gpuHistoryData);
@@ -268,6 +274,7 @@ export default function App() {
         <MetricsTabs
           cpuHistory={history}
           ramHistory={ramHistory}
+          storageCurrent={storageCurrent}
           storageHistory={storageHistory}
           gpuCurrent={gpuCurrent}
           gpuHistory={gpuHistory}
