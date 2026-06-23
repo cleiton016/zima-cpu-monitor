@@ -29,6 +29,7 @@ import {
 import MetricCard from "./components/MetricCard";
 import DailyBigNumbers from "./components/DailyBigNumbers";
 import EnergySettingsCard from "./components/EnergySettingsCard";
+import HardwareInfoButton from "./components/HardwareInfoButton";
 import MetricsTabs from "./components/MetricsTabs";
 import PeriodFilter, { type RangeOption } from "./components/PeriodFilter";
 import SettingsPanel from "./components/SettingsPanel";
@@ -196,9 +197,12 @@ export default function App() {
             <p className="text-sm font-medium text-teal-300">ZimaOS</p>
             <h1 className="text-3xl font-semibold text-zinc-50">Zima CPU Monitor</h1>
           </div>
-          <p className="text-sm text-zinc-400">
+          <div className="flex flex-col gap-2 sm:items-end">
+            <p className="text-sm text-zinc-400">
             Última leitura: {current ? new Date(current.timestamp).toLocaleString("pt-BR") : "aguardando"}
-          </p>
+            </p>
+            <HardwareInfoButton />
+          </div>
         </header>
 
         {error ? (

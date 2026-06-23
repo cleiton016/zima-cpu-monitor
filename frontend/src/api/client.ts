@@ -151,6 +151,58 @@ export type EnergyMonthly = {
   }>;
 };
 
+export type HardwareInfo = {
+  cpu: {
+    model: string | null;
+    vendor: string | null;
+    architecture: string | null;
+    physicalCores: number | null;
+    threads: number | null;
+    baseFrequencyMHz: number | null;
+    currentFrequencyMHz: number | null;
+    cache: string | null;
+  };
+  motherboard: {
+    vendor: string | null;
+    model: string | null;
+    version: string | null;
+    serial: string | null;
+    biosVendor: string | null;
+    biosVersion: string | null;
+    biosDate: string | null;
+  };
+  gpu: {
+    available: boolean;
+    vendor: string | null;
+    model: string | null;
+    driver: string | null;
+    memoryTotalBytes: number | null;
+    temperatureCelsius: number | null;
+    usagePercent: number | null;
+  };
+  storage: Array<{
+    name: string;
+    model: string | null;
+    serial: string | null;
+    type: string | null;
+    sizeBytes: number | null;
+    usedBytes: number | null;
+    freeBytes: number | null;
+    usagePercent: number | null;
+    temperatureCelsius: number | null;
+    smartStatus: string | null;
+  }>;
+  memory: {
+    totalBytes: number | null;
+    usedBytes: number | null;
+    availableBytes: number | null;
+    freeBytes: number | null;
+    swapTotalBytes: number | null;
+    swapUsedBytes: number | null;
+    temperatureCelsius: number | null;
+  };
+};
+
 const API_BASE = "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -212,6 +264,10 @@ export function getEnergyMonthly() {
 
 export function getEnergySettings() {
   return request<EnergySettings>("/settings/energy");
+}
+
+export function getHardwareInfo() {
+  return request<HardwareInfo>("/hardware/info");
 }
 
 export function updateEnergySettings(settings: EnergySettings) {
