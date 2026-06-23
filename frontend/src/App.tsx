@@ -4,6 +4,8 @@ import {
   getCurrentMetric,
   getDailySummary,
   getEnergyHistory,
+  getEnergyMonthly,
+  getEnergySettings,
   getGpuCurrent,
   getGpuHistory,
   getHistory,
@@ -12,8 +14,11 @@ import {
   getSummary,
   getStorageHistory,
   updateSettings,
+  updateEnergySettings,
   type DailySummary,
   type EnergyMetric,
+  type EnergyMonthly,
+  type EnergySettings,
   type GpuCurrent,
   type GpuMetric,
   type Metric,
@@ -23,6 +28,7 @@ import {
 } from "./api/client";
 import MetricCard from "./components/MetricCard";
 import DailyBigNumbers from "./components/DailyBigNumbers";
+import EnergySettingsCard from "./components/EnergySettingsCard";
 import MetricsTabs from "./components/MetricsTabs";
 import PeriodFilter, { type RangeOption } from "./components/PeriodFilter";
 import SettingsPanel from "./components/SettingsPanel";
@@ -85,10 +91,13 @@ export default function App() {
   const [gpuCurrent, setGpuCurrent] = useState<GpuCurrent | null>(null);
   const [gpuHistory, setGpuHistory] = useState<GpuMetric[]>([]);
   const [energyHistory, setEnergyHistory] = useState<EnergyMetric[]>([]);
+  const [energyMonthly, setEnergyMonthly] = useState<EnergyMonthly | null>(null);
+  const [energySettings, setEnergySettings] = useState<EnergySettings | null>(null);
   const [range, setRange] = useState<RangeOption>("24h");
   const [collectInterval, setCollectInterval] = useState(30);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingEnergy, setSavingEnergy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const query = useMemo(() => `range=${range}`, [range]);
@@ -108,6 +117,8 @@ export default function App() {
         gpuCurrentData,
         gpuHistoryData,
         energyHistoryData,
+        energyMonthlyData,
+        energySettingsData,
         settings
       ] = await Promise.all([
         getCurrentMetric(),
@@ -119,6 +130,8 @@ export default function App() {
         getGpuCurrent(),
         getGpuHistory(categoryQuery),
         getEnergyHistory(categoryQuery),
+        getEnergyMonthly(),
+        getEnergySettings(),
         getSettings()
       ]);
       setCurrent(currentMetric);
@@ -130,6 +143,8 @@ export default function App() {
       setGpuCurrent(gpuCurrentData);
       setGpuHistory(gpuHistoryData);
       setEnergyHistory(energyHistoryData);
+      setEnergyMonthly(energyMonthlyData);
+      setEnergySettings(energySettingsData);
       setCollectInterval(settings.collect_interval_seconds);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar métricas.");
@@ -152,6 +167,21 @@ export default function App() {
       setError(err instanceof Error ? err.message : "Erro ao salvar configurações.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveEnergySettings(settings: EnergySettings) {
+    setSavingEnergy(true);
+    setError(null);
+    try {
+      const updated = await updateEnergySettings(settings);
+      setEnergySettings(updated);
+      const monthly = await getEnergyMonthly();
+      setEnergyMonthly(monthly);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar energia.");
+    } finally {
+      setSavingEnergy(false);
     }
   }
 
@@ -229,6 +259,8 @@ export default function App() {
           loading={loading}
         />
 
+        <EnergySettingsCard settings={energySettings} saving={savingEnergy} onSave={saveEnergySettings} />
+
         <MetricsTabs
           cpuHistory={history}
           ramHistory={ramHistory}
@@ -236,6 +268,7 @@ export default function App() {
           gpuCurrent={gpuCurrent}
           gpuHistory={gpuHistory}
           energyHistory={energyHistory}
+          energyMonthly={energyMonthly}
         />
 
         <div className="grid gap-4 lg:grid-cols-2">

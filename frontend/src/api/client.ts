@@ -134,6 +134,23 @@ export type EnergyMetric = {
   source: string;
 };
 
+export type EnergySettings = {
+  kwhPrice: number;
+  currency: string;
+};
+
+export type EnergyMonthly = {
+  year: number;
+  currency: string;
+  kwhPrice: number;
+  months: Array<{
+    month: number;
+    label: string;
+    kwh: number;
+    cost: number;
+  }>;
+};
+
 const API_BASE = "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -187,6 +204,21 @@ export function getGpuHistory(query: string) {
 
 export function getEnergyHistory(query: string) {
   return request<EnergyMetric[]>(`/metrics/energy?${query}`);
+}
+
+export function getEnergyMonthly() {
+  return request<EnergyMonthly>("/metrics/energy/monthly");
+}
+
+export function getEnergySettings() {
+  return request<EnergySettings>("/settings/energy");
+}
+
+export function updateEnergySettings(settings: EnergySettings) {
+  return request<EnergySettings>("/settings/energy", {
+    method: "PUT",
+    body: JSON.stringify(settings)
+  });
 }
 
 export function getSettings() {

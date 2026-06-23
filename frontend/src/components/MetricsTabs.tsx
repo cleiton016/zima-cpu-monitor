@@ -1,6 +1,8 @@
 import { Cpu, Database, HardDrive, MemoryStick, Zap } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -11,7 +13,7 @@ import {
   YAxis
 } from "recharts";
 
-import type { EnergyMetric, GpuCurrent, GpuMetric, Metric, RamMetric, StorageMetric } from "../api/client";
+import type { EnergyMetric, EnergyMonthly, GpuCurrent, GpuMetric, Metric, RamMetric, StorageMetric } from "../api/client";
 import { CpuUsageChart, LoadAverageChart, PowerChart, TemperatureChart } from "./Charts";
 
 type MetricsTabsProps = {
@@ -21,6 +23,7 @@ type MetricsTabsProps = {
   gpuCurrent: GpuCurrent | null;
   gpuHistory: GpuMetric[];
   energyHistory: EnergyMetric[];
+  energyMonthly: EnergyMonthly | null;
 };
 
 type TabId = "cpu" | "ram" | "storage" | "gpu" | "energy";
@@ -172,9 +175,14 @@ function GpuCharts({ current, data }: { current: GpuCurrent | null; data: GpuMet
   );
 }
 
-function EnergyCharts({ data }: { data: EnergyMetric[] }) {
+function EnergyCharts({ data, monthly }: { data: EnergyMetric[]; monthly: EnergyMonthly | null }) {
   if (!data.length) {
-    return <EmptyState label="Sem dados de energia no periodo selecionado." />;
+    return (
+      <div className="grid gap-4 lg:grid-cols-2">
+        <EmptyState label="Sem dados de energia no periodo selecionado." />
+        <EnergyMonthlyBarChart monthly={monthly} />
+      </div>
+    );
   }
 
   const chartData = data.map((item) => ({
@@ -207,7 +215,30 @@ function EnergyCharts({ data }: { data: EnergyMetric[] }) {
           </LineChart>
         </ResponsiveContainer>
       </ChartFrame>
+      <EnergyMonthlyBarChart monthly={monthly} />
     </div>
+  );
+}
+
+function EnergyMonthlyBarChart({ monthly }: { monthly: EnergyMonthly | null }) {
+  if (!monthly) {
+    return <EmptyState label="Sem dados mensais de energia." />;
+  }
+
+  return (
+    <ChartFrame title="Consumo mensal">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={monthly.months}>
+          <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+          <XAxis dataKey="label" stroke="#a1a1aa" />
+          <YAxis stroke="#a1a1aa" />
+          <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", color: "#fafafa" }} />
+          <Legend />
+          <Bar dataKey="kwh" name="kWh" fill="#84cc16" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="cost" name={monthly.currency} fill="#38bdf8" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartFrame>
   );
 }
 
@@ -217,7 +248,8 @@ export default function MetricsTabs({
   storageHistory,
   gpuCurrent,
   gpuHistory,
-  energyHistory
+  energyHistory,
+  energyMonthly
 }: MetricsTabsProps) {
   const tabs = useMemo(() => {
     const baseTabs: Array<{ id: TabId; label: string; icon: ReactNode }> = [
@@ -265,7 +297,7 @@ export default function MetricsTabs({
       {visibleTab === "ram" ? <RamCharts data={ramHistory} /> : null}
       {visibleTab === "storage" ? <StorageCharts data={storageHistory} /> : null}
       {visibleTab === "gpu" ? <GpuCharts current={gpuCurrent} data={gpuHistory} /> : null}
-      {visibleTab === "energy" ? <EnergyCharts data={energyHistory} /> : null}
+      {visibleTab === "energy" ? <EnergyCharts data={energyHistory} monthly={energyMonthly} /> : null}
     </section>
   );
 }
