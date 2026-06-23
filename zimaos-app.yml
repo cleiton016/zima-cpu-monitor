@@ -1,0 +1,45 @@
+name: zima-cpu-monitor
+services:
+  zima-cpu-monitor-api:
+    image: zima-cpu-monitor-api
+    container_name: zima-cpu-monitor-api
+    restart: unless-stopped
+    volumes:
+      - /DATA/AppData/zima-cpu-monitor/data:/data
+      - /sys:/host/sys:ro
+      - /proc:/host/proc:ro
+    environment:
+      - DATABASE_PATH=/data/metrics.db
+      - HOST_SYS_PATH=/host/sys
+      - HOST_PROC_PATH=/host/proc
+    ports:
+      - "8008:8000"
+
+  zima-cpu-monitor-web:
+    image: zima-cpu-monitor-web
+    container_name: zima-cpu-monitor-web
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    depends_on:
+      - zima-cpu-monitor-api
+
+x-casaos:
+  architectures:
+    - amd64
+  main: zima-cpu-monitor-web
+  author: Cleiton Luiz
+  category: Utilities
+  description:
+    en_us: Lightweight CPU monitoring dashboard for ZimaOS.
+    pt_br: Dashboard leve para monitoramento de CPU no ZimaOS.
+  developer: Cleiton Luiz
+  hostname: ""
+  icon: "https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/main/Apps/CasaOS/icon.png"
+  index: /
+  is_uncontrolled: false
+  port_map: "8090"
+  scheme: http
+  title:
+    en_us: Zima CPU Monitor
+    pt_br: Zima CPU Monitor

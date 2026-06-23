@@ -1,0 +1,32 @@
+{
+  "name": "zima-cpu-monitor-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "6.0.3",
+    "vite": "8.1.0",
+    "typescript": "6.0.3",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "recharts": "3.9.0",
+    "lucide-react": "1.21.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "tailwindcss": "3.4.17",
+    "postcss": "8.4.49",
+    "autoprefixer": "10.4.20",
+    "vitest": "4.1.9",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/jest-dom": "6.9.1",
+    "jsdom": "29.1.1"
+  }
+}
