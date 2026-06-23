@@ -22,6 +22,7 @@ x-casaos:
 
 services:
   zima-cpu-monitor-api:
+    image: cleiton016/zima-cpu-monitor-api:${ZIMA_CPU_MONITOR_VERSION:-latest}
     build: ./backend
     container_name: zima-cpu-monitor-api
     restart: unless-stopped
@@ -42,6 +43,7 @@ services:
       - "8008:8000"
 
   zima-cpu-monitor-web:
+    image: cleiton016/zima-cpu-monitor-web:${ZIMA_CPU_MONITOR_VERSION:-latest}
     build: ./frontend
     container_name: zima-cpu-monitor-web
     restart: unless-stopped

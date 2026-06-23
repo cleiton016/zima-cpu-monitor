@@ -1,0 +1,36 @@
+name: zima-cpu-monitor-dev
+
+services:
+  zima-cpu-monitor-api:
+    build: ./backend
+    container_name: zima-cpu-monitor-api-dev
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app
+    environment:
+      - DATABASE_PATH=/data/metrics.db
+      - HOST_SYS_PATH=/sys
+      - HOST_PROC_PATH=/proc
+      - COLLECT_INTERVAL_SECONDS=30
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./backend/app:/app/app
+      - ./data:/data
+    ports:
+      - "8008:8000"
+
+  zima-cpu-monitor-web:
+    image: node:22-alpine
+    container_name: zima-cpu-monitor-web-dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      - VITE_API_PROXY_TARGET=http://zima-cpu-monitor-api:8000
+    volumes:
+      - ./frontend:/app
+      - zima-cpu-monitor-web-node-modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - zima-cpu-monitor-api
+
+volumes:
+  zima-cpu-monitor-web-node-modules:
