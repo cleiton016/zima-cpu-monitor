@@ -112,6 +112,28 @@ Quando sensores ou ferramentas como `smartctl`, `lspci` ou drivers de GPU nao es
 
 ## Rodando localmente
 
+Modo dev com live reload:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+URLs locais:
+
+```txt
+Frontend: http://localhost:5173
+Backend: http://localhost:8008/health
+```
+
+Nesse modo:
+
+- Alteracoes em `backend/app` reiniciam o FastAPI via `uvicorn --reload`.
+- Alteracoes em `frontend/src` atualizam o navegador via Vite HMR.
+- O SQLite local fica em `./data/metrics.db`.
+- O proxy do Vite encaminha `/api` e `/health` para o container da API.
+
+Modo similar ao deploy do ZimaOS:
+
 ```bash
 docker compose up -d --build
 docker logs -f zima-cpu-monitor-api
