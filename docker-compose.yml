@@ -25,14 +25,19 @@ services:
     build: ./backend
     container_name: zima-cpu-monitor-api
     restart: unless-stopped
+    privileged: true
     volumes:
       - /DATA/AppData/zima-cpu-monitor/data:/data
       - /sys:/host/sys:ro
       - /proc:/host/proc:ro
+      - /dev:/host/dev:ro
+      - /run/udev:/run/udev:ro
     environment:
       - DATABASE_PATH=/data/metrics.db
       - HOST_SYS_PATH=/host/sys
       - HOST_PROC_PATH=/host/proc
+      - COLLECT_INTERVAL_SECONDS=30
+      - TZ=America/Sao_Paulo
     ports:
       - "8008:8000"
 

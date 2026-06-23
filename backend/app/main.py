@@ -7,8 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from .collector import Collector
 from .config import get_settings
 from .database import initialize_database
+from .hardware_info import HardwareInfoReader
 from .metrics_reader import MetricsReader
-from .routes import export, metrics, settings as settings_routes
+from .routes import energy, export, gpu, hardware, metrics, ram, settings as settings_routes, storage
 from .schemas import HealthResponse
 from .services.metrics_service import MetricsService
 from .services.settings_service import SettingsService
@@ -25,6 +26,7 @@ async def lifespan(app: FastAPI):
     initialize_database(app_settings.database_path, app_settings.default_collect_interval_seconds)
 
     app.state.metrics_reader = MetricsReader(app_settings.host_sys_path, app_settings.host_proc_path)
+    app.state.hardware_info_reader = HardwareInfoReader(app_settings.host_sys_path, app_settings.host_proc_path)
     app.state.metrics_service = MetricsService(app_settings.database_path)
     app.state.settings_service = SettingsService(
         app_settings.database_path,
@@ -58,5 +60,10 @@ def health():
 
 
 app.include_router(metrics.router)
+app.include_router(ram.router)
+app.include_router(storage.router)
+app.include_router(gpu.router)
+app.include_router(energy.router)
 app.include_router(settings_routes.router)
 app.include_router(export.router)
+app.include_router(hardware.router)
