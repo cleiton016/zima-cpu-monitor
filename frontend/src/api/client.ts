@@ -42,6 +42,27 @@ export type Settings = {
   collect_interval_seconds: number;
 };
 
+export type DailySummary = {
+  date: string;
+  cpuPeak: {
+    valuePercent: number | null;
+    timestamp: string | null;
+  };
+  temperaturePeak: {
+    valueCelsius: number | null;
+    timestamp: string | null;
+  };
+  ramPeak: {
+    valuePercent: number | null;
+    timestamp: string | null;
+  };
+  energyTotal: {
+    kwh: number | null;
+    estimatedCost: number | null;
+    currency: string;
+  };
+};
+
 const API_BASE = "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -71,6 +92,10 @@ export function getHistory(query: string) {
 
 export function getSummary(query: string) {
   return request<Summary>(`/metrics/summary?${query}`);
+}
+
+export function getDailySummary() {
+  return request<DailySummary>("/metrics/daily-summary");
 }
 
 export function getSettings() {

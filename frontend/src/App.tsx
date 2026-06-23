@@ -2,10 +2,12 @@ import { Activity, Cpu, Gauge, Thermometer, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getCurrentMetric,
+  getDailySummary,
   getHistory,
   getSettings,
   getSummary,
   updateSettings,
+  type DailySummary,
   type Metric,
   type Summary
 } from "./api/client";
@@ -16,6 +18,7 @@ import {
   TemperatureChart
 } from "./components/Charts";
 import MetricCard from "./components/MetricCard";
+import DailyBigNumbers from "./components/DailyBigNumbers";
 import PeriodFilter, { type RangeOption } from "./components/PeriodFilter";
 import SettingsPanel from "./components/SettingsPanel";
 import UnavailableMetricWarning from "./components/UnavailableMetricWarning";
@@ -53,6 +56,7 @@ export default function App() {
   const [current, setCurrent] = useState<Metric | null>(null);
   const [history, setHistory] = useState<Metric[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [range, setRange] = useState<RangeOption>("24h");
   const [collectInterval, setCollectInterval] = useState(30);
   const [loading, setLoading] = useState(true);
@@ -65,15 +69,17 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const [currentMetric, historyData, summaryData, settings] = await Promise.all([
+      const [currentMetric, historyData, summaryData, dailySummaryData, settings] = await Promise.all([
         getCurrentMetric(),
         getHistory(query),
         getSummary(query),
+        getDailySummary(),
         getSettings()
       ]);
       setCurrent(currentMetric);
       setHistory(historyData);
       setSummary(summaryData);
+      setDailySummary(dailySummaryData);
       setCollectInterval(settings.collect_interval_seconds);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar métricas.");
@@ -120,6 +126,8 @@ export default function App() {
             {error}
           </section>
         ) : null}
+
+        <DailyBigNumbers summary={dailySummary} loading={loading} />
 
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <MetricCard
