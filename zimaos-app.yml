@@ -1,7 +1,7 @@
 name: zima-cpu-monitor
 services:
   zima-cpu-monitor-api:
-    image: zima-cpu-monitor-api
+    image: cleiton016/zima-cpu-monitor-api:latest
     container_name: zima-cpu-monitor-api
     restart: unless-stopped
     volumes:
@@ -16,7 +16,7 @@ services:
       - "8008:8000"
 
   zima-cpu-monitor-web:
-    image: zima-cpu-monitor-web
+    image: cleiton016/zima-cpu-monitor-web:latest
     container_name: zima-cpu-monitor-web
     restart: unless-stopped
     ports:

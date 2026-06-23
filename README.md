@@ -110,6 +110,31 @@ Exemplo resumido de `/api/hardware/info`:
 
 Quando sensores ou ferramentas como `smartctl`, `lspci` ou drivers de GPU nao estiverem disponiveis, os campos retornam `null` ou listas vazias.
 
+## CI/CD
+
+O GitHub Actions usa `.github/workflows/ci-release.yml`.
+
+Secrets necessarios no repositorio:
+
+```txt
+DOCKERHUB_USERNAME
+DOCKERHUB_TOKEN
+```
+
+Fluxo:
+
+- Pull request para `main`: instala dependencias, roda testes do backend, testes do frontend, build do frontend e valida build Docker das duas imagens.
+- Push ou merge em `main`: repete a validacao, incrementa automaticamente o patch em `backend/VERSION` e `frontend/package.json`, cria commit `chore: release X.Y.Z`, cria tag `vX.Y.Z` e publica imagens no Docker Hub.
+
+Imagens publicadas:
+
+```txt
+cleiton016/zima-cpu-monitor-api:X.Y.Z
+cleiton016/zima-cpu-monitor-api:latest
+cleiton016/zima-cpu-monitor-web:X.Y.Z
+cleiton016/zima-cpu-monitor-web:latest
+```
+
 ## Rodando localmente
 
 Modo dev com live reload:
