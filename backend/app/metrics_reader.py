@@ -126,12 +126,12 @@ class MetricsReader:
                     "vendor": self._read_gpu_vendor(card_path),
                     "model": self._read_text(card_path / "device" / "uevent") or card_path.name,
                     "driver": self._read_driver_name(card_path),
-                    "usagePercent": None,
-                    "temperatureCelsius": None,
-                    "memoryTotalBytes": None,
-                    "memoryUsedBytes": None,
-                    "memoryUsagePercent": None,
-                    "powerWatts": None,
+                    "usagePercent": self._read_text(card_path / "device" / "hwmon" / "pwm1") or None,
+                    "temperatureCelsius": self._read_text(card_path / "device" / "hwmon" / "temp1_input"),
+                    "memoryTotalBytes": self._read_text(card_path / "device" / "hwmon" / "mem_total_bytes"),
+                    "memoryUsedBytes": self._read_text(card_path / "device" / "hwmon" / "mem_used_bytes"),
+                    "memoryUsagePercent": self._read_text(card_path / "device" / "hwmon" / "mem_usage_percent"),
+                    "powerWatts": self._read_text(card_path / "device" / "hwmon" / "power1_input"),
                 }
             )
         return {"available": bool(devices), "timestamp": timestamp, "devices": devices}
@@ -292,15 +292,22 @@ class MetricsReader:
         devices: list[dict] = []
         for device_path in sorted((self.host_sys_path / "block").glob("*")):
             name = device_path.name
+            model = self._read_text(device_path / "device" / "model")
             if not self._is_storage_disk_name(name):
+                continue
+            if not model:
+                continue
+            size_bytes = self._read_block_size(device_path)
+            # size deve ser maior que 500mb
+            if size_bytes is None or size_bytes < 500 * 1024 * 1024:
                 continue
             io = disk_io.get(name) if disk_io else None
             devices.append(
                 {
                     "name": name,
-                    "model": self._read_text(device_path / "device" / "model"),
+                    "model": model,
                     "type": self._read_disk_type(device_path),
-                    "sizeBytes": self._read_block_size(device_path),
+                    "sizeBytes": size_bytes,
                     "temperatureCelsius": None,
                     "smartStatus": None,
                     "readBytesTotal": io.read_bytes if io else None,
