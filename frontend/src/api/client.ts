@@ -42,6 +42,13 @@ export type Settings = {
   collect_interval_seconds: number;
 };
 
+export type MetricCategory = "cpu" | "ram" | "storage" | "gpu" | "energy";
+
+export type ClearHistoryResponse = {
+  category: MetricCategory;
+  deletedRows: number;
+};
+
 export type DailySummary = {
   date: string;
   cpuPeak: {
@@ -261,6 +268,19 @@ export function getSummary(query: string) {
 
 export function getDailySummary() {
   return request<DailySummary>("/metrics/daily-summary");
+}
+
+export function clearMetricHistory(category: MetricCategory) {
+  const pathByCategory: Record<MetricCategory, string> = {
+    cpu: "/metrics/cpu/history",
+    ram: "/metrics/ram/history",
+    storage: "/metrics/storage/history",
+    gpu: "/metrics/gpu/history",
+    energy: "/metrics/energy/history"
+  };
+  return request<ClearHistoryResponse>(pathByCategory[category], {
+    method: "DELETE"
+  });
 }
 
 export function getRamHistory(query: string) {

@@ -17,3 +17,8 @@ def gpu_history(
     bucket: str | None = Query(None),
 ):
     return request.app.state.metrics_service.get_gpu_history(from_value, to_value)
+
+
+@router.delete("/history")
+def clear_gpu_history(request: Request):
+    return request.app.state.metrics_service.clear_history("gpu")

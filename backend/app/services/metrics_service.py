@@ -29,6 +29,14 @@ CSV_COLUMNS = [
     "uptime_seconds",
 ]
 
+HISTORY_TABLES_BY_CATEGORY = {
+    "cpu": ("metrics",),
+    "ram": ("process_memory_samples", "ram_samples"),
+    "storage": ("storage_mount_samples", "storage_samples"),
+    "gpu": ("gpu_samples",),
+    "energy": ("energy_samples",),
+}
+
 
 class MetricsService:
     def __init__(self, database_path: Path) -> None:
@@ -221,6 +229,21 @@ class MetricsService:
                 (timestamp, power_watts, energy_kwh, source, utc_now_iso()),
             )
             connection.commit()
+
+    def clear_history(self, category: str) -> dict:
+        tables = HISTORY_TABLES_BY_CATEGORY.get(category)
+        if tables is None:
+            allowed = ", ".join(sorted(HISTORY_TABLES_BY_CATEGORY))
+            raise ValueError(f"category must be one of: {allowed}")
+
+        deleted_rows = 0
+        with get_connection(self.database_path) as connection:
+            for table in tables:
+                cursor = connection.execute(f"DELETE FROM {table}")
+                deleted_rows += max(cursor.rowcount, 0)
+            connection.commit()
+
+        return {"category": category, "deletedRows": deleted_rows}
 
     def get_latest(self) -> dict | None:
         with get_connection(self.database_path) as connection:
