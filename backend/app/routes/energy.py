@@ -17,3 +17,8 @@ def energy_history(
 @router.get("/monthly")
 def energy_monthly(request: Request, year: int | None = Query(None)):
     return request.app.state.metrics_service.get_energy_monthly(year)
+
+
+@router.delete("/history")
+def clear_energy_history(request: Request):
+    return request.app.state.metrics_service.clear_history("energy")

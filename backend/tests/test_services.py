@@ -121,3 +121,91 @@ def test_daily_summary_uses_metrics_and_energy_samples(tmp_path: Path):
     assert summary["ramPeak"]["valuePercent"] == 80.0
     assert summary["energyTotal"]["kwh"] == 0.5
     assert summary["energyTotal"]["estimatedCost"] == 0.47
+
+
+def test_clear_history_deletes_only_requested_category(tmp_path: Path):
+    database_path = tmp_path / "metrics.db"
+    initialize_database(database_path, 30)
+    service = MetricsService(database_path)
+    service.save(make_metric("2026-06-23T10:00:00Z"))
+
+    with get_connection(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO ram_samples (
+                timestamp, total_bytes, used_bytes, available_bytes, usage_percent, created_at
+            ) VALUES ('2026-06-23T10:00:00Z', 100, 80, 20, 80.0, '2026-06-23T10:00:00Z')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO process_memory_samples (
+                timestamp, pid, name, command, memory_bytes, memory_percent, created_at
+            ) VALUES ('2026-06-23T10:00:00Z', 123, 'python', 'python app.py', 10, 1.0, '2026-06-23T10:00:00Z')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO storage_samples (
+                timestamp, device_name, created_at
+            ) VALUES ('2026-06-23T10:00:00Z', 'sda', '2026-06-23T10:00:00Z')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO storage_mount_samples (
+                timestamp, mount_point, created_at
+            ) VALUES ('2026-06-23T10:00:00Z', '/DATA', '2026-06-23T10:00:00Z')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO gpu_samples (
+                timestamp, gpu_id, created_at
+            ) VALUES ('2026-06-23T10:00:00Z', 'card0', '2026-06-23T10:00:00Z')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO energy_samples (
+                timestamp, power_watts, energy_kwh, source, created_at
+            ) VALUES ('2026-06-23T10:00:00Z', 10.0, 0.5, 'test', '2026-06-23T10:00:00Z')
+            """
+        )
+        connection.commit()
+
+    result = service.clear_history("ram")
+
+    with get_connection(database_path) as connection:
+        counts = {
+            table: connection.execute(f"SELECT COUNT(*) AS count FROM {table}").fetchone()["count"]
+            for table in (
+                "metrics",
+                "ram_samples",
+                "process_memory_samples",
+                "storage_samples",
+                "storage_mount_samples",
+                "gpu_samples",
+                "energy_samples",
+            )
+        }
+
+    assert result == {"category": "ram", "deletedRows": 2}
+    assert counts == {
+        "metrics": 1,
+        "ram_samples": 0,
+        "process_memory_samples": 0,
+        "storage_samples": 1,
+        "storage_mount_samples": 1,
+        "gpu_samples": 1,
+        "energy_samples": 1,
+    }
+
+
+def test_clear_history_rejects_unknown_category(tmp_path: Path):
+    database_path = tmp_path / "metrics.db"
+    initialize_database(database_path, 30)
+    service = MetricsService(database_path)
+
+    with pytest.raises(ValueError):
+        service.clear_history("unknown")

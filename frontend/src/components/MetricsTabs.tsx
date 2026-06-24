@@ -1,4 +1,4 @@
-import { Cpu, Database, HardDrive, MemoryStick, Zap } from "lucide-react";
+import { Cpu, Database, HardDrive, MemoryStick, Trash2, Zap } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   Bar,
@@ -19,6 +19,7 @@ import type {
   GpuCurrent,
   GpuMetric,
   Metric,
+  MetricCategory,
   RamMetric,
   StorageCurrent,
   StorageMetric
@@ -34,6 +35,8 @@ type MetricsTabsProps = {
   gpuHistory: GpuMetric[];
   energyHistory: EnergyMetric[];
   energyMonthly: EnergyMonthly | null;
+  clearingHistory: MetricCategory | null;
+  onClearHistory: (category: MetricCategory) => Promise<void>;
 };
 
 type TabId = "cpu" | "ram" | "storage" | "gpu" | "energy";
@@ -358,7 +361,9 @@ export default function MetricsTabs({
   gpuCurrent,
   gpuHistory,
   energyHistory,
-  energyMonthly
+  energyMonthly,
+  clearingHistory,
+  onClearHistory
 }: MetricsTabsProps) {
   const tabs = useMemo(() => {
     const baseTabs: Array<{ id: TabId; label: string; icon: ReactNode }> = [
@@ -374,25 +379,38 @@ export default function MetricsTabs({
   }, [gpuCurrent?.available, gpuHistory.length]);
   const [activeTab, setActiveTab] = useState<TabId>("cpu");
   const visibleTab = tabs.some((tab) => tab.id === activeTab) ? activeTab : "cpu";
+  const activeLabel = tabs.find((tab) => tab.id === visibleTab)?.label ?? "historico";
+  const isClearingActive = clearingHistory === visibleTab;
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2 border-b border-zinc-800 pb-3">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition ${
-              visibleTab === tab.id
-                ? "border-teal-300 bg-teal-300 text-zinc-950"
-                : "border-zinc-700 bg-zinc-900 text-zinc-200 hover:border-zinc-500"
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex flex-col gap-3 border-b border-zinc-800 pb-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition ${
+                visibleTab === tab.id
+                  ? "border-teal-300 bg-teal-300 text-zinc-950"
+                  : "border-zinc-700 bg-zinc-900 text-zinc-200 hover:border-zinc-500"
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => void onClearHistory(visibleTab)}
+          disabled={clearingHistory !== null}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-red-400/50 bg-red-950/40 px-4 text-sm font-medium text-red-100 transition hover:border-red-300 hover:bg-red-900/60 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Trash2 size={16} />
+          {isClearingActive ? "Limpando" : `Limpar historico ${activeLabel}`}
+        </button>
       </div>
 
       {visibleTab === "cpu" ? (

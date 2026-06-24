@@ -22,3 +22,8 @@ def ram_history(
 @router.get("/processes")
 def ram_processes(request: Request):
     return request.app.state.metrics_reader.read_ram_processes()
+
+
+@router.delete("/history")
+def clear_ram_history(request: Request):
+    return request.app.state.metrics_service.clear_history("ram")

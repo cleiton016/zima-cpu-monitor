@@ -1,6 +1,7 @@
 import { Activity, Cpu, Gauge, Thermometer, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  clearMetricHistory,
   getCurrentMetric,
   getDailySummary,
   getEnergyHistory,
@@ -23,6 +24,7 @@ import {
   type GpuCurrent,
   type GpuMetric,
   type Metric,
+  type MetricCategory,
   type RamMetric,
   type StorageCurrent,
   type StorageMetric,
@@ -102,6 +104,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingEnergy, setSavingEnergy] = useState(false);
+  const [clearingHistory, setClearingHistory] = useState<MetricCategory | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const query = useMemo(() => `range=${range}`, [range]);
@@ -189,6 +192,31 @@ export default function App() {
       setError(err instanceof Error ? err.message : "Erro ao salvar energia.");
     } finally {
       setSavingEnergy(false);
+    }
+  }
+
+  async function clearHistory(category: MetricCategory) {
+    const labels: Record<MetricCategory, string> = {
+      cpu: "CPU",
+      ram: "RAM",
+      storage: "HDs",
+      gpu: "GPU",
+      energy: "Energia"
+    };
+    const confirmed = window.confirm(`Limpar historico de ${labels[category]}? Esta acao nao pode ser desfeita.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setClearingHistory(category);
+    setError(null);
+    try {
+      await clearMetricHistory(category);
+      await loadDashboard();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao limpar historico.");
+    } finally {
+      setClearingHistory(null);
     }
   }
 
@@ -280,6 +308,8 @@ export default function App() {
           gpuHistory={gpuHistory}
           energyHistory={energyHistory}
           energyMonthly={energyMonthly}
+          clearingHistory={clearingHistory}
+          onClearHistory={clearHistory}
         />
 
         <div className="grid gap-4 lg:grid-cols-2">

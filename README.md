@@ -54,6 +54,16 @@ GET /api/settings/energy
 PUT /api/settings/energy
 ```
 
+Endpoints para limpar historico por categoria:
+
+```txt
+DELETE /api/metrics/cpu/history
+DELETE /api/metrics/ram/history
+DELETE /api/metrics/storage/history
+DELETE /api/metrics/gpu/history
+DELETE /api/metrics/energy/history
+```
+
 Payload de configuracao de energia:
 
 ```json

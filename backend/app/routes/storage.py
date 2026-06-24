@@ -18,3 +18,8 @@ def storage_history(
     bucket: str | None = Query(None),
 ):
     return request.app.state.metrics_service.get_storage_history(device, from_value, to_value)
+
+
+@router.delete("/history")
+def clear_storage_history(request: Request):
+    return request.app.state.metrics_service.clear_history("storage")

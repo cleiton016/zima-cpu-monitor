@@ -47,3 +47,8 @@ def metric_summary(
 @router.get("/daily-summary")
 def daily_summary(request: Request, date: str | None = Query(None)):
     return request.app.state.metrics_service.get_daily_summary(date)
+
+
+@router.delete("/cpu/history")
+def clear_cpu_history(request: Request):
+    return request.app.state.metrics_service.clear_history("cpu")
