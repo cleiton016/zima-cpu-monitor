@@ -78,6 +78,7 @@ jobs:
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: docker
 
     outputs:
       version: ${{ steps.bump.outputs.version }}
