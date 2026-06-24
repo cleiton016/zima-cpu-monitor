@@ -114,10 +114,15 @@ Quando sensores ou ferramentas como `smartctl`, `lspci` ou drivers de GPU nao es
 
 O GitHub Actions usa `.github/workflows/ci-release.yml`.
 
-Secrets necessarios no repositorio:
+Variables necessarias no repositorio:
 
 ```txt
 DOCKERHUB_USERNAME
+```
+
+Secrets necessarios no repositorio:
+
+```txt
 DOCKERHUB_TOKEN
 ```
 
