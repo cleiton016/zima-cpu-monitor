@@ -88,14 +88,20 @@ class HardwareInfoReader:
         disks: list[dict] = []
         for device_path in sorted((self.host_sys_path / "block").glob("*")):
             name = device_path.name
+            model = self._read_text(device_path / "device" / "model")
             if not self._is_storage_disk_name(name):
                 continue
+            if not model:
+                continue
+            # size deve ser maior que 500mb
             size_bytes = self._read_block_size(device_path)
+            if (size_bytes := self._read_block_size(device_path)) is None or size_bytes < 500 * 1024 * 1024:
+                continue
             mount = self._find_mount_for_device(name)
             disks.append(
                 {
                     "name": name,
-                    "model": self._read_text(device_path / "device" / "model"),
+                    "model": model,
                     "serial": self._read_text(device_path / "device" / "serial"),
                     "type": self._read_disk_type(device_path),
                     "sizeBytes": size_bytes,
